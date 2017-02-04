@@ -17,8 +17,7 @@ else
   exit(true)
 end
 
-pe = CSV.foreach(url, headers: true, header_converters:
-:symbol)
+#pe = CSV.foreach(url, headers: true, header_converters::symbol)
 
 # class Delivery
 class Delivery
@@ -31,14 +30,14 @@ class Delivery
     @what_got_shipped  = what_got_shipped
     @number_of_crates  = number_of_crates.to_i
     @money_we_made     = money_we_made.to_i
-    @namePilot         = self.set_name
+    @namePilot         = set_name
   end
   def set_name
     nm = "undefined Pilot"
     case @destination
     when "Earth"    then nm = "Fry"
     when "Mars"     then nm = "Amy"
-    when "Uranis"   then nm = "Bender"
+    when "Uranus"   then nm = "Bender"
     else                 nm = "Leela"
     end
   return nm
@@ -52,106 +51,121 @@ def employees
   %w(Fry Amy Bender Leela)
 end
 
-class Pilot
-  attr_accessor     :name, :earned_total, :bonus_total, :trip_total
-  def initialize(name, earned_total=0, bonus_total=0, trip_total=0 )
-    @earned_total = earned_total
-    @bonus_total  = bonus_total
-    @trip_total   = trip_total
-    @name         = name
+class Parse
+  def parse_data(file_name  )
+    pe = CSV.foreach(file_name, headers: true, header_converters: :symbol)
+    pe.collect {|row|  Delivery.new(row)}
+  end
+  def self.pilot_list (trips )
+    trips.flat_map{|trip| trip.namePilot}.uniq
+  end
+  def self.planet_list (trips )
+    trips.collect{|trip| trip.destination}.uniq
+  end
+  def self.planet_profits(planet, trips)
+    foo = trips.select{|trip| trip.destination==planet}
+    foo.collect{|trip| trip.money_we_made}.reduce(0){|sum,item| sum+=item}
+  end
+  def self.total_money(trips )
+    monies = trips.flat_map{|trip| trip.money_we_made}
+    monies.reduce(0){|sum,index| sum+=index}
+  end
+  def self.bonus_per_employee (trips,pilot )
+    their_trips = trips.select{|trip| trip.namePilot==pilot}
+    profit = their_trips.flat_map{|trip| trip.money_we_made}.reduce(0){|sum,n| sum+=n }
+    profit * 0.1
+  end
+  def self.trips_per_pilot (trips,pilot )
+    their_trips = trips.select{|trip| trip.namePilot==pilot}
+    their_trips.length
+  end
+  def self.money_total(trips )
+    trips.reduce(0) {|sum,trip| sum += trip.money_we_made}
   end
 end
 
-# For each employee, create a Pilot instance
-pilots = []
-employees.each {|employee|
-    pilots << Pilot.new(employee)
-}
+trips = Parse.new.parse_data(url )
+pilots = Parse.pilot_list(trips )
+planets = Parse.planet_list(trips )
 
 # How much money did we make this week?
+puts "Explorer Question 1"
+puts "   How much money did we make this week?"
+money = Parse.total_money(trips )
+puts "   Total made this week is $#{money}"
 puts ' '
-puts "How much money did we make this week?"
-trips = pe.collect {|row|
-  Delivery.new(row)
-}
-total = trips.reduce(0) {|sum,trip|
-  sum += trip.money_we_made
-}
-puts "Total earned is $#{total}"
 
-# How much of a bonus did each employee get? (bonuses are paid to employees who pilot the Planet Express)
-puts ' '
-puts "How much of a bonus did each employee get?"
-# For each employee
-total_bonus = 0
-employees.each {|employee|
-  # Select trips with that employee
-  trips.select {|trip|
-    #puts "#{employee} $#{trip.bonus} trip to #{@destination}"
-    #cumulate each trips bonus
-    total_bonus += trip.bonus
-  }
-  # Reduce the bonus to a total
-  puts "#{employee} total bonus = $#{total_bonus}"
+puts "Exlorer Question 2"
+puts "   How much of a bonus did each employee get?"
+# pilots.each {|pilot|
+#   their_trips = trips.select{|trip| trip.namePilot==pilot}
+#   profit = their_trips.flat_map{|trip| trip.money_we_made}.reduce(0){|sum,n| sum+=n }
+#   puts "   #{pilot} made #{profit * 0.1} bonus"
+# }
+pilots.each{|pilot|
+  bonus = Parse.bonus_per_employee(trips,pilots )
+  puts "   Total bonus for #{pilot} is $#{bonus}"
 }
+puts ' '
 
 # How many trips did each employee pilot?
-trips.each {|trip|
-  pilot_name = trip.namePilot
-  #puts "Pilot name is #{pilot_name}"
-  p_instance = pilots.detect {|pilot|
-    pilot.name == pilot_name
-  }
-  if p_instance
-    #puts "   Yes, I found the matching pilot"
-    p_instance.earned_total += trip.money_we_made
-    p_instance.bonus_total  += trip.bonus
-    p_instance.trip_total   += 1
-    #puts "      earned #{p_instance.earned_total}"
-    #puts "      bonus  #{p_instance.bonus_total}"
-    #puts "      trips  #{p_instance.trip_total}"
-  else
-    #puts "      No, I did not find any matching pilots"
-  end
-  p_instance
+puts "Exlorer Question 3"
+puts "   How many trips did each employee take? "
+pilots.each{|pilot|
+  n_trips = Parse.trips_per_pilot(trips,pilot )
+  puts "   #{pilot} made #{n_trips}"
 }
-
-# How many trips did each employee take?
 puts ' '
-puts "How many trips did each employee take? "
-pilots.each {|pilot|
-  puts "#{pilot.name} made #{pilot.trip_total}"
-}
-
-class Parse
-  attr_accessor :file_name, :parse_data
-  def initialize
-    @file_name = ''
-  end
-  def parse_data(file_name )
-    @file_name = file_name
-  end
-end
 
 # How much money did we make broken down by planet?
-puts ' '
-puts "How much money did we make, by planet?"
-# first, create a hash of planets & money
-planets = Hash.new
-trips.each {|trip|
-  td = trip.destination
-  tm = trip.money_we_made
-  planets[td] ? planets[td]+=tm : planets[td] = tm
+puts "Exlorer Question 4"
+puts "   How much money did we make, by planet?"
+# planets = trips.collect{|trip| trip.destination}.uniq
+# # puts planets
+planets.each{|planet|
+  profit = Parse.planet_profits(planet,trips )
+  puts "   #{planet} made #{profit}"
 }
-puts planets
+puts ' '
 
+# make a Parse class
+puts "Adverture Question 1"
+puts "   OK, I made a Parse class :-)"
+puts ' '
 
+# How much money did we make this week?
+puts "Adverture Question 2"
+puts "   How much money did we make this week?"
+# trips = Parse.new.parse_data(url )
+# total = trips.reduce(0) {|sum,trip| sum += trip.money_we_made}
+total = Parse.money_total(trips )
+puts "   Total earned is $#{total}"
+puts ' '
 
+# no puts in methods
+puts "Epic Question 1"
+puts "   OK, NO puts in any methods"
+puts ' '
 
+# no methods longer than 10 lines
+puts "Epic Question 2"
+puts "   OK, no methods longer than 10 lines"
+puts " "
 
+# make data_parser executable
+puts "Epic Question 3"
+puts "   OK, data_parser now executable via command line"
+puts ' '
 
+# All the above questions should have corresponding class methods in Parse
+puts "Legendary Question 1"
+puts "   OK, they are all now methods"
+puts " "
 
-
-
-# Define and use your Delivery class to represent each shipment
-#   see Delivery class above, and usage
+# saves a new CSV
+puts "Legendary Question 2"
+puts "  almost there"
+if ARGV[1] && (ARGV[1]=='report')
+  puts "saves a new CSV"
+end
+puts ' '
