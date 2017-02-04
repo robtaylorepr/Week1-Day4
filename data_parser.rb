@@ -2,14 +2,9 @@
 # Week1 Day4   (Feb 2nd, 2017)
 # CSV - Comma Separated Values
 
-# Header
-# Destination, What got shipped, Number of crates, Money we made
-
-
 # read the CSV file into an array
 require 'csv'
 # url = "planet_express_logs.csv"
-
 if ARGV[0]
   url = ARGV[0]
 else
@@ -74,6 +69,10 @@ class Parse
     their_trips = trips.select{|trip| trip.namePilot==pilot}
     profit = their_trips.flat_map{|trip| trip.money_we_made}.reduce(0){|sum,n| sum+=n }
     profit * 0.1
+  end
+  def self.total_per_employee (trips,pilot )
+    their_trips = trips.select{|trip| trip.namePilot==pilot}
+    their_trips.flat_map{|trip| trip.money_we_made}.reduce(0){|sum,n| sum+=n }
   end
   def self.trips_per_pilot (trips,pilot )
     their_trips = trips.select{|trip| trip.namePilot==pilot}
@@ -164,8 +163,30 @@ puts " "
 
 # saves a new CSV
 puts "Legendary Question 2"
-puts "  almost there"
 if ARGV[1] && (ARGV[1]=='report')
-  puts "saves a new CSV"
+  puts "   saving new.csv"
+#  Pilot, Shipments, Total Revenue, Payment
+#  Pilot, #shipments, Total, total_bonus
+  # puts "   Pilot   nshipments   ntotal   nbonus"
+  foo_list = trips.collect{|trip|
+    foo = []
+    pilot = trip.namePilot
+    nshipments = Parse.trips_per_pilot(trips,pilot )
+    ntotal     = Parse.total_per_employee(trips,pilot )
+    nbonus     = Parse.bonus_per_employee(trips,pilot )
+    # puts "   #{pilot} #{nshipments} #{ntotal} #{nbonus}"
+    foo << pilot
+    foo << nshipments
+    foo << ntotal
+    foo << nbonus
+    # puts foo.to_s
+    foo
+  }
 end
-puts ' '
+
+CSV.open("new.csv", "wb") { |csv|
+  csv << ["Pilot", "Shipments", "Total Revenue", "Payment"]
+  foo_list.each {|row|
+    csv << row
+  }
+}
